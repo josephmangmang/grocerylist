@@ -1,11 +1,30 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:todolist/add_todo.dart';
+import 'package:todolist/blocs/todolist/todolist.dart';
 import 'package:todolist/models/todo.dart';
 
 void main() {
   runApp(HomePage());
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final TodolistBloc todolistBloc = TodolistBloc();
+
+  @override
+  void initState() {
+    todolistBloc.add(StartFetchTodoList());
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -13,14 +32,37 @@ class HomePage extends StatelessWidget {
         body: SafeArea(
           child: Container(
             margin: EdgeInsets.all(16),
-            child: Column(
+            child: Stack(
               children: <Widget>[
-                header(),
-                SizedBox(
-                  height: 50,
+                Column(
+                  children: <Widget>[
+                    header(),
+                    SizedBox(
+                      height: 50,
+                    ),
+                    calendar(),
+                    Expanded(child: todoList()),
+                  ],
                 ),
-                calendar(),
-                todoList()
+                Builder(
+                  builder: (BuildContext context) {
+                    return Align(
+                      alignment: AlignmentDirectional.bottomCenter,
+                      child: FloatingActionButton(
+                        child: Icon(Icons.add),
+                        onPressed: () {
+                          // navigate to next page
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (BuildContext context) =>
+                                      // the next page widget
+                                      AddTodoPage()));
+                        },
+                      ),
+                    );
+                  },
+                )
               ],
             ),
           ),
@@ -30,6 +72,7 @@ class HomePage extends StatelessWidget {
   }
 
   Widget header() {
+    final now = DateTime.now();
     return Container(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -39,7 +82,8 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                "Friday, May 11",
+                // format to ex:     "Friday, May 11"
+                DateFormat("EEEE, MMM dd").format(now),
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
               SizedBox(
@@ -58,7 +102,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // prepare a widget that represent the calendar view
   Widget calendar() {
     var now = DateTime.now();
     var sunday = now.subtract(Duration(days: 8 - now.weekday));
@@ -66,7 +109,6 @@ class HomePage extends StatelessWidget {
     for (int i = 0; i < 7; i++) {
       weekDays.add(sunday.add(Duration(days: i)));
     }
-    print(weekDays);
     return Container(
       height: 100,
       child: Row(
@@ -102,7 +144,6 @@ class HomePage extends StatelessWidget {
     return '';
   }
 
-  // return a widget for calendar item
   Widget days({String weekday, String day}) {
     return Column(
       children: <Widget>[
@@ -122,62 +163,103 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // widget for scrollable todo list
   Widget todoList() {
-    List<Todo> todoList = [];
-
-    todoList.add(Todo(
-        color: Colors.lightBlue,
-        task: "Set up office",
-        isDone: true,
-        dateTime: DateTime.now(),
-        alarm: "15 mins before",
-        category: 'Work'));
-
-    todoList.add(Todo(
-        color: Colors.lightBlue,
-        task: "Daily UI #43",
-        isDone: false,
-        dateTime: DateTime.now(),
-        alarm: "15 mins before",
-        category: 'Work'));
-
-    return ListView(
-      shrinkWrap: true,
-      children: todoList.map((Todo todo) {
-        return TodoItem(todo);
-      }).toList(),
-    );
+    return BlocBuilder(
+        bloc: todolistBloc,
+        builder: (context, TodolistState state) {
+          if (state is LoadingTodoList) {
+            return Center(child: CircularProgressIndicator());
+          }
+          if (state is EmptyTodoList) {
+            return Center(
+              child: Text("No Task yet. Click + to add."),
+            );
+          }
+          if (state is TodoListLoaded) {
+            return ListView(
+              shrinkWrap: true,
+              children: state.todoList.map((Todo todo) {
+                return TodoItem(
+                  todo,
+                  key: ValueKey(todo),
+                  todolistBloc: todolistBloc,
+                  onDeleteConfirmed: (Todo todo) {
+                    todolistBloc.add(DeleteTodo(todo));
+                  },
+                );
+              }).toList(),
+            );
+          }
+          return Container();
+        });
   }
 }
 
 class TodoItem extends StatelessWidget {
   final Todo todo;
+  final Function(Todo todo) onDeleteConfirmed;
+  final TodolistBloc todolistBloc;
 
-  TodoItem(this.todo);
+  TodoItem(this.todo, {Key key, this.onDeleteConfirmed, this.todolistBloc})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Row(
-        children: <Widget>[
-          Container(
-            height: 10,
-            width: 10,
-            decoration:
-                BoxDecoration(shape: BoxShape.circle, color: todo.color),
-          ),
-          Expanded(
-            child: Container(
-                margin: EdgeInsets.only(left: 24, right: 16),
-                child: Text(todo.task)),
-          ),
-          Checkbox(
-            value: todo.isDone,
-            onChanged: (isDone) {},
-          )
-        ],
+    return Dismissible(
+      key: ValueKey(todo.id),
+      background: Container(
+        color: Colors.red,
+        alignment: AlignmentDirectional.centerEnd,
+        child: Icon(
+          Icons.delete,
+          color: Colors.white,
+        ),
+      ),
+      onDismissed: (direction) {
+        if (onDeleteConfirmed != null) {
+          onDeleteConfirmed(todo);
+        }
+      },
+      child: Container(
+        child: Row(
+          children: <Widget>[
+            Container(
+              height: 10,
+              width: 10,
+              decoration:
+                  BoxDecoration(shape: BoxShape.circle, color: randomColor()),
+            ),
+            Expanded(
+              child: Container(
+                  margin: EdgeInsets.only(left: 24, right: 16),
+                  child: Text(todo.task)),
+            ),
+            Checkbox(
+              value: todo.isDone,
+              onChanged: (isDone) {
+                todolistBloc.add(UpdateTodo(todo.copyWith(isDone: isDone)));
+              },
+            )
+          ],
+        ),
       ),
     );
+  }
+
+  Color randomColor() {
+    var randomInt = Random.secure().nextInt(5);
+    switch (randomInt) {
+      case 1:
+        return Colors.blue;
+      case 2:
+        return Colors.red;
+      case 3:
+        return Colors.green;
+      case 4:
+        return Colors.amber;
+      case 5:
+        return Colors.pink;
+    }
+    return Colors.cyan;
   }
 }

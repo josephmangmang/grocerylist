@@ -19,6 +19,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  bloc: ^4.0.0
+  flutter_bloc: ^4.0.0
+  cloud_firestore: ^0.13.6
+  equatable: ^1.2.0
+  intl: ^0.16.1
 
 
 dev_dependencies:
