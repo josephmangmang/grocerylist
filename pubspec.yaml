@@ -19,10 +19,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # https://bloclibrary.dev/#/gettingstarted
   bloc: ^4.0.0
   flutter_bloc: ^4.0.0
+  # firebase firestore library for flutter https://pub.dev/packages/cloud_firestore
   cloud_firestore: ^0.13.6
+  # library for implementing object equality https://pub.dev/packages/equatable
   equatable: ^1.2.0
+  # library for dateformating etc. https://pub.dev/packages/intl
   intl: ^0.16.1
 
 
