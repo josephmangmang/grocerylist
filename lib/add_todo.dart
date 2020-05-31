@@ -175,7 +175,7 @@ class _AddTodoPageState extends State<AddTodoPage> {
         final timeOfDay = await showTimePicker(
             context: context, initialTime: TimeOfDay.now());
         setState(() {
-          if (selectedDate != null || timeOfDay != null) {
+          if (selectedDate != null && timeOfDay != null) {
             dateTime = DateTime(selectedDate.year, selectedDate.month,
                 selectedDate.day, timeOfDay.hour, timeOfDay.minute);
           }

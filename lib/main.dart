@@ -7,20 +7,31 @@ import 'package:todolist/add_todo.dart';
 import 'package:todolist/blocs/todolist/todolist.dart';
 import 'package:todolist/models/todo.dart';
 
+/// The starting point of the app.
 void main() {
   runApp(HomePage());
 }
 
+// our main page
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  // create a new instance of class TodolistBloc and store it in a variable called
+  // todolistBloc so that later on we can access it anywhere inside _HomePageState
   final TodolistBloc todolistBloc = TodolistBloc();
 
+  // when a widget launched, this is the first method that will be called
+  // this is the place where you can prepare something  or initialize something before
+  // widget call the build() method
   @override
   void initState() {
+    // call add(Event) method from your bloc so that you can add a new event
+    // this will notify your TodolistBloc class that a new Event is being fire.
+    // in TodolistBloc, mapEventToState will be called and you can check what kind of
+    // event is being sent
     todolistBloc.add(StartFetchTodoList());
     super.initState();
   }
@@ -71,7 +82,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // prepare the widget that represent your header
   Widget header() {
+    // the current time
     final now = DateTime.now();
     return Container(
       child: Row(
@@ -83,6 +96,7 @@ class _HomePageState extends State<HomePage> {
             children: <Widget>[
               Text(
                 // format to ex:     "Friday, May 11"
+                // format the current time to a readable string and display to screen
                 DateFormat("EEEE, MMM dd").format(now),
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
@@ -102,21 +116,38 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // return a widget that represent the calendar part of the ui
   Widget calendar() {
+    // current time
+    // DateTime now = DateTime.now();
+    // and
+    // var now = DateTime.now();
+    // are same
     var now = DateTime.now();
-    var sunday = now.subtract(Duration(days: 8 - now.weekday));
+    // to get this week sunday DateTime. We subtract the current day by daysPerWeek - current weekday
+    var sunday =
+        now.subtract(Duration(days: DateTime.daysPerWeek - now.weekday));
+    // create a new list that can store DateTime object initialize it with empty list []
     List<DateTime> weekDays = [];
-    for (int i = 0; i < 7; i++) {
+    // iterate from 0 to daysPerWeek(7)
+    for (int i = 0; i < DateTime.daysPerWeek; i++) {
+      // get the next day by adding 1 day and store it to our list weekDays
       weekDays.add(sunday.add(Duration(days: i)));
     }
     return Container(
       height: 100,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: weekDays
-            .map((DateTime e) => days(
-                weekday: '${getWeekDayString(e.weekday)}', day: '${e.day}'))
-            .toList(),
+        // prepare the children widget
+        // map (convert) every item inside weekDays list to a widget
+        children: weekDays.map((DateTime date) {
+          // call days() method to prepare a widget for every DateTime
+          //
+          return days(
+              weekday: '${getWeekDayString(date.weekday)}', day: '${date.day}');
+          // map() method return Iterable type but our children parameter expect a List of Widget not Iterable of Widget
+          // convert it by calling toList()
+        }).toList(),
       ),
     );
   }
@@ -144,6 +175,7 @@ class _HomePageState extends State<HomePage> {
     return '';
   }
 
+  // method that prepare the date item in calendar widget
   Widget days({String weekday, String day}) {
     return Column(
       children: <Widget>[
@@ -163,29 +195,41 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // method that prepare the list widget in the ui
   Widget todoList() {
+    // to receive a stream of state from todolistBloc we need to wrap our widget
+    // with BLocBuilder. When new state is fire, the builder(context, state) method
+    // will be called and we decide what widget to display based on this state
     return BlocBuilder(
+        // the bloc that we will listening for any state change
         bloc: todolistBloc,
         builder: (context, TodolistState state) {
+          // when the bloc fires a LoadingTodoList state we will show a loading screen
           if (state is LoadingTodoList) {
             return Center(child: CircularProgressIndicator());
           }
+          // for empty state we will display center text
           if (state is EmptyTodoList) {
             return Center(
               child: Text("No Task yet. Click + to add."),
             );
           }
+          // if the above condition is not meet. Show the list of todo to the screen
           if (state is TodoListLoaded) {
             return ListView(
               shrinkWrap: true,
+              // convert the todo list to a list of Widget that represent every todo item
               children: state.todoList.map((Todo todo) {
+                // create a new instance(copy) of TodoItem widget for every Todo object
                 return TodoItem(
                   todo,
+                  // pass a key so that flutter can identify each of our widget.
+                  // later on when we change something in our TodoItem state like checkbox
+                  // flutter can identify which widget should be rebuild
                   key: ValueKey(todo),
+                  // pass the todolistbloc so that we can access it inside TodoItem class when changing checkbox state
+                  // and deleting item
                   todolistBloc: todolistBloc,
-                  onDeleteConfirmed: (Todo todo) {
-                    todolistBloc.add(DeleteTodo(todo));
-                  },
                 );
               }).toList(),
             );
@@ -196,16 +240,17 @@ class _HomePageState extends State<HomePage> {
 }
 
 class TodoItem extends StatelessWidget {
+  // store the Todo object for this TodoItem widget
   final Todo todo;
-  final Function(Todo todo) onDeleteConfirmed;
   final TodolistBloc todolistBloc;
 
-  TodoItem(this.todo, {Key key, this.onDeleteConfirmed, this.todolistBloc})
-      : super(key: key);
+  TodoItem(this.todo, {Key key, @required this.todolistBloc}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // to implement swipe left/right to delete, wrap out widget item with Dismissible widget
     return Dismissible(
+      // pass a unique value to identify the current widget
       key: ValueKey(todo.id),
       background: Container(
         color: Colors.red,
@@ -215,10 +260,11 @@ class TodoItem extends StatelessWidget {
           color: Colors.white,
         ),
       ),
+      // onDismissed parameter accept a method that will be called when user swipe the item
+      // left/right
       onDismissed: (direction) {
-        if (onDeleteConfirmed != null) {
-          onDeleteConfirmed(todo);
-        }
+        // when user swipe send Delete event to our todolistBloc and pass the todo that we will delete
+        todolistBloc.add(DeleteTodo(todo));
       },
       child: Container(
         child: Row(
@@ -237,6 +283,8 @@ class TodoItem extends StatelessWidget {
             Checkbox(
               value: todo.isDone,
               onChanged: (isDone) {
+                // when checkbox is clicked. send event to todolistBloc
+                // passing a new copy of object Todo with the new isDone value
                 todolistBloc.add(UpdateTodo(todo.copyWith(isDone: isDone)));
               },
             )
@@ -246,20 +294,8 @@ class TodoItem extends StatelessWidget {
     );
   }
 
+// generate a random color
   Color randomColor() {
-    var randomInt = Random.secure().nextInt(5);
-    switch (randomInt) {
-      case 1:
-        return Colors.blue;
-      case 2:
-        return Colors.red;
-      case 3:
-        return Colors.green;
-      case 4:
-        return Colors.amber;
-      case 5:
-        return Colors.pink;
-    }
-    return Colors.cyan;
+    return Colors.primaries[Random().nextInt(Colors.primaries.length)];
   }
 }

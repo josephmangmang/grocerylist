@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:todolist/models/todo.dart';
 
+// the parent event for our TodolistBloc class
 abstract class TodolistEvent extends Equatable {
   const TodolistEvent();
 }
