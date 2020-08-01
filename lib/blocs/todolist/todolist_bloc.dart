@@ -22,6 +22,7 @@ class TodolistBloc extends Bloc<TodolistEvent, TodolistState> {
   Future<void> close() {
     // if _streamSubscription is not null cancel any listener. to avoid memory leak
     _streamSubscription?.cancel();
+    // add someting
     return super.close();
   }
 
