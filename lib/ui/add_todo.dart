@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:todolist/blocs/todo/todo.dart';
 
-import 'models/todo.dart';
+import '../models/todo.dart';
 
 class AddTodoPage extends StatefulWidget {
   @override
@@ -10,7 +9,6 @@ class AddTodoPage extends StatefulWidget {
 }
 
 class _AddTodoPageState extends State<AddTodoPage> {
-  TodoBloc todoBloc = TodoBloc();
   TextEditingController taskController = TextEditingController();
   var categoryTextController = TextEditingController();
 
@@ -141,12 +139,7 @@ class _AddTodoPageState extends State<AddTodoPage> {
           minWidth: double.infinity,
           color: Colors.blue,
           onPressed: () {
-            todoBloc.add(AddTodo(Todo(
-                isDone: false,
-                alarm: alarmText,
-                category: categoryTextController.text,
-                dateTime: dateTime,
-                task: taskController.text)));
+            // TODO handle add
 
             // close page after adding
             Navigator.pop(context);

@@ -3,8 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:todolist/add_todo.dart';
-import 'package:todolist/blocs/todolist/todolist.dart';
+import 'package:todolist/bloc/todo/todo_cubit.dart';
+import 'package:todolist/ui/add_todo.dart';
 import 'package:todolist/models/todo.dart';
 
 void main() {
@@ -17,11 +17,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final TodolistBloc todolistBloc = TodolistBloc();
+  TodoCubit todoCubit = TodoCubit();
 
   @override
   void initState() {
-    todolistBloc.add(StartFetchTodoList());
+    todoCubit.loadTodoList();
     super.initState();
   }
 
@@ -165,43 +165,34 @@ class _HomePageState extends State<HomePage> {
 
   Widget todoList() {
     return BlocBuilder(
-        bloc: todolistBloc,
-        builder: (context, TodolistState state) {
-          if (state is LoadingTodoList) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (state is EmptyTodoList) {
-            return Center(
-              child: Text("No Task yet. Click + to add."),
-            );
-          }
-          if (state is TodoListLoaded) {
-            return ListView(
-              shrinkWrap: true,
-              children: state.todoList.map((Todo todo) {
-                return TodoItem(
-                  todo,
-                  key: ValueKey(todo),
-                  todolistBloc: todolistBloc,
-                  onDeleteConfirmed: (Todo todo) {
-                    todolistBloc.add(DeleteTodo(todo));
-                  },
-                );
-              }).toList(),
-            );
-          }
-          return Container();
-        });
+      cubit: todoCubit,
+      builder: (context, TodoState state) {
+        if (state is InitialState) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        if (state is TodoLoaded) {
+          return ListView(
+            shrinkWrap: true,
+            children: state.todoList
+                .map((todo) => TodoItem(
+                      todo,
+                      onDeleteConfirmed: (todo) {},
+                    ))
+                .toList(),
+          );
+        }
+        return Container();
+      },
+    );
   }
 }
 
 class TodoItem extends StatelessWidget {
   final Todo todo;
   final Function(Todo todo) onDeleteConfirmed;
-  final TodolistBloc todolistBloc;
 
-  TodoItem(this.todo, {Key key, this.onDeleteConfirmed, this.todolistBloc})
-      : super(key: key);
+  TodoItem(this.todo, {Key key, this.onDeleteConfirmed}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -237,7 +228,7 @@ class TodoItem extends StatelessWidget {
             Checkbox(
               value: todo.isDone,
               onChanged: (isDone) {
-                todolistBloc.add(UpdateTodo(todo.copyWith(isDone: isDone)));
+                // TODO
               },
             )
           ],
